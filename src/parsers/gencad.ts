@@ -54,6 +54,7 @@ export function parseGenCAD(data: Uint8Array): RawBoard {
   const nails: RawNail[] = [];
 
   let section = '';
+  let title: string | undefined;
   let curPad = '';
   let curStack: Padstack | null = null;
   let curShape: ShapePin[] | null = null;
@@ -113,6 +114,7 @@ export function parseGenCAD(data: Uint8Array): RawBoard {
     switch (section) {
       case 'HEADER':
         if (k === 'UNITS') setUnits(t);
+        else if (k === 'DRAWING') title = rest(line).replace(/\s*BoardView\s*$/i, '').trim() || undefined;
         break;
       case 'BOARD':
         geom(t, (pts) => outlineSegs.push(...pointsToSegments(pts)));
@@ -244,6 +246,7 @@ export function parseGenCAD(data: Uint8Array): RawBoard {
 
   return {
     format: 'GenCAD',
+    title,
     outline: outlineSegs.length ? chainSegments(outlineSegs) : [],
     parts,
     pins,

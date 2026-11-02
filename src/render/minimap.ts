@@ -28,7 +28,7 @@ export class Minimap {
     canvas.addEventListener('pointerup', () => (dragging = false));
   }
 
-  draw(board: Board | null, cam: Camera, palette: Palette, side: string): void {
+  draw(board: Board | null, cam: Camera, palette: Palette, side: string, boardFill?: string): void {
     const dpr = window.devicePixelRatio || 1;
     const w = this.canvas.clientWidth;
     const h = this.canvas.clientHeight;
@@ -37,7 +37,7 @@ export class Minimap {
       this.canvas.width = Math.round(w * dpr);
       this.canvas.height = Math.round(h * dpr);
     }
-    const key = `${board.fileName}|${cam.rotation}|${cam.mirror}|${w}x${h}|${palette.bg}|${side}`;
+    const key = `${board.fileName}|${cam.rotation}|${cam.mirror}|${w}x${h}|${palette.bg}|${side}|${boardFill}`;
     if (key !== this.cacheKey) {
       this.cacheKey = key;
       this.mini.width = w;
@@ -45,7 +45,7 @@ export class Minimap {
       this.mini.rotation = cam.rotation;
       this.mini.mirror = cam.mirror;
       this.mini.fit(board.bounds, 8, true);
-      this.cache = this.renderCache(board, palette, dpr, side);
+      this.cache = this.renderCache(board, boardFill ? { ...palette, board: boardFill } : palette, dpr, side);
     }
     const ctx = this.ctx;
     ctx.setTransform(1, 0, 0, 1, 0, 0);

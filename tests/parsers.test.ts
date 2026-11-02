@@ -200,7 +200,7 @@ describe('net classification', () => {
     ['PP3V3_S5', 'power'], ['+3VALW', 'power'], ['VCC_CORE', 'power'], ['P1V05_S0', 'power'], ['1V8_AON', 'power'],
     ['P1V2', 'power'], ['PVCORE', 'power'], ['PVBAT', 'power'], ['P3V3A', 'power'], ['PW_USB_TYPE_C_A', 'power'],
     ['DGND_NFC', 'ground'], ['AGND_AUDIO', 'ground'],
-    ['1V8_MAIN_EN_PWR', 'signal'], ['P3V3_PG', 'signal'], ['VRPGPU_SW1', 'signal'], ['PP5V_EN', 'signal'],
+    ['1V8_MAIN_EN_PWR', 'signal'], ['VCORE_PROCHOT#', 'signal'], ['P3V3_PG', 'signal'], ['VRPGPU_SW1', 'signal'], ['PP5V_EN', 'signal'],
     ['NC', 'nc'], ['UNCONNECTED', 'nc'],
     ['USB2_D0_P', 'signal'], ['PLT_RST_L', 'signal'], ['SPI_CLK', 'signal'],
   ])('%s → %s', (n, k) => expect(classifyNet(n)).toBe(k));

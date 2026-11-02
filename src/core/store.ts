@@ -18,6 +18,9 @@ export interface Settings {
   fzKey: string;
   xzzKey: string;
   theme: 'carbon' | 'midnight' | 'paper';
+  /** Diagram (net-coloured pads) or physical appearance. */
+  view: 'diagram' | 'real';
+  maskColor: 'green' | 'black' | 'blue' | 'red' | 'purple' | 'white';
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -30,6 +33,8 @@ export const DEFAULT_SETTINGS: Settings = {
   fzKey: '',
   xzzKey: '',
   theme: 'carbon',
+  view: 'diagram',
+  maskColor: 'green',
 };
 
 export interface State {

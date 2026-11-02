@@ -13,6 +13,19 @@ npm run build      # build estático en dist/ — desplegable en cualquier hosti
 npm test           # tests de parsers, criptografía y pipeline
 ```
 
+## Ficha técnica y vista real
+
+- **Vista Real** (`V` o botón *Diagrama / Real*): máscara de soldadura (verde, negra, azul, roja, morada o blanca), pads ENIG, cuerpos de componentes por material (cerámicos con terminales de estaño, resistencias, inductores moldeados, polímeros con banda de polaridad, cristales metálicos, conectores, ICs con marca de pin 1, CPU/GPU con sustrato y die) y serigrafía. Las piezas no montadas se ven como pads desnudos con contorno discontinuo.
+- **Identificación exacta**: el descriptor del BOM se interpreta en categoría, número de parte del fabricante (MPN), fabricante, código interno del ODM, encapsulado con dimensiones, valor, tensión, corriente, tolerancia, dieléctrico, ESR y frecuencia. Las GPU se identifican por su die (p. ej. `GA107-725-A1`).
+- **Ficha técnica** en el inspector:
+  - ilustración vectorial del encapsulado con el marcaje real, incluido el código SMD de las resistencias;
+  - función en el circuito deducida de las redes (desacoplo, pull-up, inductor de salida buck con sensado DCR, etc.);
+  - guía de diagnóstico por tipo de componente;
+  - reglas de reemplazo compatible, más equivalentes conocidos para piezas de segunda fuente (2N7002, BAT54, BAV99, 74LVC1G…);
+  - piezas donantes con el mismo número de parte en la placa;
+  - enlaces a datasheet, Octopart, LCSC e imágenes.
+- En formatos sin descriptor (BRD, BDV…) la clasificación se hace por prefijo de referencia (C, R, L, Q, U, D, X, J…).
+
 ## Aplicaciones nativas
 
 | Plataforma | Artefacto | Cómo se genera |

@@ -1,7 +1,9 @@
 import { annotationKey, type AnnotationStore, type TargetKind } from '../core/annotations';
 import type { Selection, Settings } from '../core/store';
 import type { Board, NetKind } from '../core/types';
+import { circuitRole, diagnostics, donors, lookupLinks, packageLabel, replacements } from '../core/catalog';
 import { h, icon } from './dom';
+import { partIllustration } from './partArt';
 import { VirtualList } from './virtualList';
 
 const KIND_TEXT: Record<NetKind, string> = { power: 'Alimentación', ground: 'Masa', signal: 'Señal', nc: 'Sin conexión' };
@@ -84,6 +86,7 @@ export class Inspector {
     return h('div.panel', {},
       h('div.eyebrow', {}, 'Placa'),
       h('h2.title.title-file', { title: b.fileName }, b.fileName),
+      b.title ? h('div.board-model', {}, h('span', {}, 'Modelo declarado en el archivo'), h('b', {}, b.title)) : null,
       h('div.badges', {}, h('span.badge', {}, b.format), h('span.badge', {}, `${this.fmt(w)} × ${this.fmt(hgt)}`)),
       h('div.stats', {},
         stat('Componentes', real.length.toLocaleString()), stat('Pines', b.pins.length.toLocaleString()),
@@ -128,13 +131,59 @@ export class Inspector {
     return [
       h('div.panel', {},
         ...this.header('Componente', part.name, [SIDE_TEXT[part.side], ...(part.dnp ? [h('span.badge.dnp', {}, 'No montado')] : []), part.smd ? 'SMD' : 'Through-hole', `${part.pins.length} pines`, `${netsOnPart.size} redes`], actions),
-        part.mfg ? h('p.mfg', {}, part.mfg) : null,
+        part.info && !part.dnp ? this.datasheet(b, id) : part.mfg ? h('p.mfg', {}, part.mfg) : null,
         h('div.kv', {}, h('span', {}, 'Centro'), h('b', {}, `${this.fmt(part.rect.cx)}, ${this.fmt(part.rect.cy)}`), h('span', {}, 'Cuerpo'), h('b', {}, `${this.fmt(part.rect.w)} × ${this.fmt(part.rect.h)}`)),
         this.noteEditor('part', id),
         h('div.eyebrow', {}, 'Pines'),
       ),
       h('div.pin-table', {}, this.list.el),
     ];
+  }
+
+  /** Professional component sheet: illustration, exact identity, specs, role, diagnostics, replacements. */
+  private datasheet(b: Board, id: number): HTMLElement {
+    const part = b.parts[id];
+    const info = part.info!;
+    const art = h('div.ds-art', { html: partIllustration(info, part.pins.length) });
+    const identity = h('div.ds-id', {},
+      h('span.eyebrow', {}, info.category),
+      h('b.ds-mpn', { title: info.mpn ?? '' }, info.mpn ?? info.value ?? part.name),
+      h('span.ds-mfr', {}, [info.manufacturer, packageLabel(info.pkg)].filter(Boolean).join(' · ') || 'Fabricante no indicado'),
+      info.odmPn ? h('span.ds-odm', { title: 'Código interno del fabricante de la placa (ODM)' }, `P/N ODM: ${info.odmPn}`) : null,
+    );
+    const specs = info.specs.length
+      ? h('div.ds-specs', {}, ...info.specs.map((s) => h('div.ds-spec', {}, h('span', {}, s.label), h('b', {}, s.value))))
+      : null;
+    const section = (title: string, items: string[]) =>
+      items.length ? h('div.ds-sec', {}, h('h4', {}, title), h('ul', {}, ...items.map((t) => h('li', {}, t)))) : null;
+    const repl = replacements(info);
+    const donorIds = donors(b, id);
+    const links = lookupLinks(info);
+    return h('details.datasheet', { open: true },
+      h('summary', {}, icon('chip'), 'Ficha técnica'),
+      h('div.ds-hero', {}, art, identity),
+      specs,
+      info.description ? h('p.ds-desc', { title: info.raw ?? '' }, info.description) : null,
+      section('Función en el circuito', circuitRole(b, id)),
+      section('Diagnóstico y prueba', diagnostics(info)),
+      h('div.ds-sec', {},
+        h('h4', {}, 'Reemplazo compatible'),
+        h('p', {}, repl.rule),
+        repl.known.length ? h('ul.ds-known', {}, ...repl.known.map((k) => h('li', {}, k))) : null,
+        h('p.ds-warn', {}, 'Verifica pinout, tensiones y encapsulado en el datasheet antes de sustituir.'),
+      ),
+      donorIds.length
+        ? h('div.ds-sec', {},
+            h('h4', {}, `Donantes en esta placa (${donorIds.length})`),
+            h('p.muted', {}, 'Mismo número de parte y descripción: útil para comparar mediciones o como pieza de reemplazo.'),
+            h('div.ds-donors', {}, ...donorIds.slice(0, 24).map((d) => h('button.chip', { onclick: () => this.actions.select({ kind: 'part', id: d }) }, b.parts[d].name)),
+              donorIds.length > 24 ? h('span.muted', {}, `+${donorIds.length - 24}`) : null),
+          )
+        : null,
+      links.length
+        ? h('div.ds-links', {}, ...links.map((l) => h('a.btn', { href: l.url, target: '_blank', rel: 'noopener noreferrer' }, icon('link'), l.label)))
+        : null,
+    );
   }
 
   private netView(b: Board, id: number): HTMLElement[] {

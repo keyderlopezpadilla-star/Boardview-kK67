@@ -9,6 +9,7 @@ import { isAndroidShell } from './platform';
 import { parseFzKey } from './crypto/rc6';
 import { Camera } from './render/camera';
 import { Minimap } from './render/minimap';
+import { MASK_COLORS } from './render/realistic';
 import { BoardRenderer, PALETTES, type HitResult } from './render/renderer';
 import { $, download, h, icon } from './ui/dom';
 import { Inspector } from './ui/inspector';
@@ -56,6 +57,7 @@ export class App {
   private measureBtn!: HTMLElement;
   private mirrorBtn!: HTMLElement;
   private sidebarBtn!: HTMLElement;
+  private viewBtns!: Record<'diagram' | 'real', HTMLElement>;
   private inspectorBtn!: HTMLElement;
 
   constructor(root: HTMLElement) {
@@ -82,6 +84,7 @@ export class App {
       this.invalidate();
     });
     this.applyTheme();
+    this.viewBtns[this.store.state.settings.view].classList.add('on');
     this.bindStage();
     this.bindKeys();
     this.bindDrop();
@@ -113,6 +116,10 @@ export class App {
       bottom: h('button.seg', { onclick: () => this.setSide('bottom'), title: 'Cara inferior' }, 'Bottom'),
       both: h('button.seg', { onclick: () => this.setSide('both'), title: 'Ambas caras' }, 'Ambas'),
     };
+    this.viewBtns = {
+      diagram: h('button.seg', { onclick: () => this.updateSettings({ view: 'diagram' }), title: 'Vista diagrama: pads coloreados por tipo de red (V)' }, 'Diagrama'),
+      real: h('button.seg', { onclick: () => this.updateSettings({ view: 'real' }), title: 'Vista real: máscara, pads y cuerpos de componentes (V)' }, 'Real'),
+    };
     this.fileChip = h('div.file-chip', {}, 'Sin archivo');
     this.pdfToggle = tb('pdf', 'Esquema PDF (P)', () => this.togglePdf());
     this.measureBtn = tb('ruler', 'Medir distancia (M)', () => this.toggleMeasure());
@@ -127,6 +134,7 @@ export class App {
       this.fileChip,
       h('div.sep'),
       h('div.segmented', { role: 'group', 'aria-label': 'Cara' }, this.sideButtons.top, this.sideButtons.bottom, this.sideButtons.both),
+      h('div.segmented.view-seg', { role: 'group', 'aria-label': 'Vista' }, this.viewBtns.diagram, this.viewBtns.real),
       tb('rotate', 'Rotar 90° (R)', () => this.rotate(1)),
       this.mirrorBtn,
       tb('fit', 'Encuadrar (F)', () => this.fit()),
@@ -299,6 +307,7 @@ export class App {
       this.status.side.textContent = s.side === 'top' ? 'Cara superior' : s.side === 'bottom' ? 'Cara inferior' : 'Ambas caras';
     }
     if (changed.has('settings')) {
+      for (const [k, el] of Object.entries(this.viewBtns)) el.classList.toggle('on', k === s.settings.view);
       saveSettings(s.settings);
       this.applyTheme();
       this.inspector.render();
@@ -745,6 +754,7 @@ export class App {
         case 'm': case 'M': this.toggleMeasure(); break;
         case 'p': case 'P': this.togglePdf(); break;
         case '?': openShortcuts(); break;
+        case 'v': case 'V': this.updateSettings({ view: this.store.state.settings.view === 'real' ? 'diagram' : 'real' }); break;
         case '[': this.togglePanel('sidebar'); break;
         case ']': this.togglePanel('inspector'); break;
         case '+': case '=': this.zoomCenter(1.4); break;
@@ -832,7 +842,7 @@ export class App {
       measure,
       hover: s.hover,
     }, fast);
-    this.minimap.draw(s.board, this.cam, this.renderer.palette, s.side);
+    this.minimap.draw(s.board, this.cam, this.renderer.palette, s.side, s.settings.view === 'real' ? MASK_COLORS[s.settings.maskColor].mask : undefined);
     const pct = this.cam.scale * 1000; // px per inch
     this.status.zoom.textContent = `${pct >= 100 ? pct.toFixed(0) : pct.toFixed(1)} px/in`;
   }

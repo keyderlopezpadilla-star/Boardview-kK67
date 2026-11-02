@@ -5,6 +5,8 @@
  * which is the de-facto convention shared by every boardview format.
  */
 
+import type { PartInfo } from './catalog';
+
 export type Side = 'top' | 'bottom' | 'both';
 
 export interface Pt {
@@ -53,6 +55,8 @@ export interface RawBoard {
   pins: RawPin[];
   nails: RawNail[];
   warnings?: string[];
+  /** Board title / model as declared by the file (GenCAD DRAWING, etc.). */
+  title?: string;
 }
 
 /* ------------------------------------------------------------------ */
@@ -82,6 +86,8 @@ export interface Part {
   virtual: boolean;
   /** Not populated in this assembly variant (NOASSEMBLED / DNP / NI…). */
   dnp: boolean;
+  /** Parsed descriptor: category, MPN, package, specs… */
+  info?: PartInfo;
 }
 
 export interface Pin {
@@ -131,6 +137,7 @@ export interface Board {
   nets: Net[];
   bounds: Bounds;
   warnings: string[];
+  title?: string;
 }
 
 /* ------------------------------------------------------------------ */

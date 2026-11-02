@@ -3,6 +3,7 @@ import { isVisible, type Selection, type Settings, type ViewSide } from '../core
 import type { Board, Bounds, NetKind, Pt, Side } from '../core/types';
 import type { Camera } from './camera';
 import { SpatialGrid } from './spatial';
+import { MASK_COLORS, MATERIALS, MATERIAL_COLOR, PAD_COLOR, bakePart, newMaterialPaths, type MaterialPaths } from './realistic';
 
 export interface Palette {
   bg: string;
@@ -58,6 +59,8 @@ interface Layers {
   /** Unpopulated footprints: dashed body + faint pads. */
   dnpStroke: Path2D;
   dnpPins: Path2D;
+  /** Physical bodies by material for the "real" view. */
+  real: MaterialPaths;
   count: number;
 }
 
@@ -113,7 +116,7 @@ export class BoardRenderer {
       return;
     }
     const kinds = () => ({ ground: new Path2D(), nc: new Path2D(), signal: new Path2D(), power: new Path2D() });
-    const mk = (): Layers => ({ pins: kinds(), pinsLod: kinds(), partStroke: new Path2D(), pin1: new Path2D(), dnpStroke: new Path2D(), dnpPins: new Path2D(), count: 0 });
+    const mk = (): Layers => ({ pins: kinds(), pinsLod: kinds(), partStroke: new Path2D(), pin1: new Path2D(), dnpStroke: new Path2D(), dnpPins: new Path2D(), real: newMaterialPaths(), count: 0 });
 
     // ~1.5k pads per tile keeps per-tile cost tiny while bounding draw-call count.
     const bb = board.bounds;
@@ -159,6 +162,7 @@ export class BoardRenderer {
       if (part.virtual || !part.pins.length) continue;
       const t = tileAt(part.rect.cx, part.rect.cy);
       const L = t.groups[groupOf(part.side)];
+      bakePart(board, part, L.real);
       const c = rectCorners(part.rect);
       const body = part.dnp ? L.dnpStroke : L.partStroke;
       body.moveTo(c[0].x, c[0].y);
@@ -266,12 +270,22 @@ export class BoardRenderer {
     const focus = selNet >= 0 || selPart >= 0 || pinnedNets.length > 0;
 
     world();
+    const real = settings.view === 'real';
+    const mask = MASK_COLORS[settings.maskColor] ?? MASK_COLORS.green;
     // Board substrate
     if (this.outlinePath) {
-      ctx.fillStyle = P.board;
+      if (real) {
+        // Solder mask with a soft sheen towards the centre.
+        const bb = board.bounds;
+        const cx = (bb.minX + bb.maxX) / 2, cy = (bb.minY + bb.maxY) / 2;
+        const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, Math.max(bb.maxX - bb.minX, bb.maxY - bb.minY) * 0.75);
+        g.addColorStop(0, mask.mask);
+        g.addColorStop(1, mask.edge);
+        ctx.fillStyle = g;
+      } else ctx.fillStyle = P.board;
       ctx.fill(this.outlinePath, 'evenodd');
-      ctx.lineWidth = 1.6 * px;
-      ctx.strokeStyle = P.outline;
+      ctx.lineWidth = (real ? 2.4 : 1.6) * px;
+      ctx.strokeStyle = real ? '#b9a27a' : P.outline;
       ctx.lineJoin = 'round';
       ctx.stroke(this.outlinePath);
     }
@@ -289,6 +303,10 @@ export class BoardRenderer {
       t.bounds.maxX >= vis.minX && t.bounds.minX <= vis.maxX && t.bounds.maxY >= vis.minY && t.bounds.minY <= vis.maxY);
 
     for (const { g, alpha } of groups) {
+      if (real) {
+        this.drawRealGroup(g, alpha * dim, visibleTiles, lod, pinsVisible, px, mask.silk);
+        continue;
+      }
       // part bodies
       ctx.globalAlpha = alpha * dim;
       ctx.fillStyle = P.partFill;
@@ -399,9 +417,36 @@ export class BoardRenderer {
 
     // ---------------- Screen-space labels (always readable, never mirrored)
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    this.drawLabels(cam, view, settings, selNet, overlay);
+    this.drawLabels(cam, view, settings, selNet, overlay, selPart);
 
     if (overlay.measure) this.drawMeasure(cam, overlay.measure, settings);
+  }
+
+  /** Real view for one side group: ENIG pads, then bodies by material, then DNP silkscreen. */
+  private drawRealGroup(g: Group, alpha: number, tiles: Tile[], lod: boolean, pinsVisible: boolean, px: number, silk: string): void {
+    const { ctx } = this;
+    ctx.globalAlpha = alpha;
+    if (pinsVisible) {
+      ctx.fillStyle = PAD_COLOR;
+      for (const t of tiles) {
+        const L = t.groups[g];
+        if (!L.count) continue;
+        for (const k of KINDS) ctx.fill(lod ? L.pinsLod[k] : L.pins[k]);
+        ctx.fill(L.dnpPins);
+      }
+    }
+    for (const m of MATERIALS) {
+      ctx.fillStyle = MATERIAL_COLOR[m];
+      for (const t of tiles) if (t.groups[g].count) ctx.fill(t.groups[g].real[m]);
+    }
+    // Unpopulated footprints: bare pads plus a dashed silkscreen outline.
+    ctx.globalAlpha = alpha * 0.45;
+    ctx.strokeStyle = silk;
+    ctx.lineWidth = 0.9 * px;
+    ctx.setLineDash([3 * px, 3 * px]);
+    for (const t of tiles) if (t.groups[g].count) ctx.stroke(t.groups[g].dnpStroke);
+    ctx.setLineDash([]);
+    ctx.globalAlpha = 1;
   }
 
   private drawPart(id: number, color: string, view: ViewSide, px: number, cam: Camera): void {
@@ -520,7 +565,7 @@ export class BoardRenderer {
     return segs;
   }
 
-  private drawLabels(cam: Camera, view: ViewSide, settings: Settings, selNet: number, overlay: Overlay): void {
+  private drawLabels(cam: Camera, view: ViewSide, settings: Settings, selNet: number, overlay: Overlay, selPart = -1): void {
     const { ctx, palette: P } = this;
     const board = this.board!;
     const vis = cam.visibleWorld(40);
@@ -529,6 +574,8 @@ export class BoardRenderer {
     ctx.lineJoin = 'round';
     const font = '"JetBrains Mono", "SF Mono", ui-monospace, Menlo, Consolas, monospace';
 
+    const real = settings.view === 'real';
+    const silk = (MASK_COLORS[settings.maskColor] ?? MASK_COLORS.green).silk;
     // Part designators
     let budget = this.fast ? 250 : 1200;
     this.partGrid?.query(vis, (id) => {
@@ -545,11 +592,22 @@ export class BoardRenderer {
       ctx.font = `600 ${size}px ${font}`;
       // Once pad numbers are readable the designator steps back so it doesn't fight them.
       ctx.globalAlpha = this.medianR * cam.scale > 7 ? 0.5 : 0.92;
+      // Second line with the exact value / part number when there is room.
+      const sub = size >= 11 && boxH > size * 2.6 ? part.info?.value ?? part.info?.mpn : undefined;
+      const y = sub ? s.y - size * 0.35 : s.y;
       ctx.lineWidth = 3;
-      ctx.strokeStyle = P.labelShadow;
-      ctx.strokeText(part.name, s.x, s.y);
-      ctx.fillStyle = P.label;
-      ctx.fillText(part.name, s.x, s.y);
+      ctx.strokeStyle = real ? 'rgba(0,0,0,0.55)' : P.labelShadow;
+      ctx.strokeText(part.name, s.x, y);
+      ctx.fillStyle = real ? silk : P.label;
+      ctx.fillText(part.name, s.x, y);
+      if (sub) {
+        const ss = Math.max(7, Math.min(size * 0.55, (boxW * 0.9) / (sub.length * 0.62)));
+        ctx.font = `500 ${ss}px ${font}`;
+        ctx.globalAlpha *= 0.85;
+        ctx.strokeText(sub, s.x, y + size * 0.55 + ss * 0.5);
+        ctx.fillStyle = real ? silk : P.pin.signal;
+        ctx.fillText(sub, s.x, y + size * 0.55 + ss * 0.5);
+      }
       budget--;
     });
     ctx.globalAlpha = 1;
@@ -561,6 +619,8 @@ export class BoardRenderer {
         if (id < 0 || pinBudget <= 0) return;
         const p = board.pins[id];
         if (!isVisible(p.side, view)) return;
+        // Real view: pads are mostly under bodies, so only label what is being inspected.
+        if (real && p.net !== selNet && p.part !== selPart) return;
         const rpx = p.r * cam.scale;
         if (rpx < 6.5) return;
         const s = cam.toScreen(p.x, p.y);

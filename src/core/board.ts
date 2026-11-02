@@ -1,3 +1,4 @@
+import { describePart } from './catalog';
 import { boxOutline, minAreaRect } from './geometry';
 import type { Board, Bounds, Nail, Net, NetKind, Part, Pin, Pt, RawBoard } from './types';
 
@@ -21,7 +22,7 @@ const POWER_RE = new RegExp(
   'i',
 );
 /** Control/sense nets that merely mention a rail (e.g. 1V8_MAIN_EN, P3V3_PG) are signals. */
-const CONTROL_RE = /(?:^|_)(?:EN|ENABLE|PG|PGOOD|PWRGD|PWROK|POK|ON|OFF|DET|SENSE|SNS|FB|CS[PN]?|PH|PHASE|LX|SW\d*|BOOT|BST|UG|LG|DH|DL|GATE|DRV|CTRL|SEL|ALERT|RST|RESET)\d*#?(?:_|$)/i;
+const CONTROL_RE = /(?:^|_)(?:EN|ENABLE|PG|PGOOD|PWRGD|PWROK|POK|ON|OFF|DET|SENSE|SNS|FB|CS[PN]?|PH|PHASE|LX|SW\d*|BOOT|BST|UG|LG|DH|DL|GATE|DRV|CTRL|SEL|ALERT|RST|RESET|PROCHOT|THERMTRIP)\d*#?(?:_|$)|#$/i;
 
 /** Assembly-variant markers used by ODM BOMs for unpopulated footprints. */
 const DNP_RE = /NO[_ ]?ASSEMBL|NOT[_ ]?ASSEMBL|NO[_ ]?POP|NOPOP|NO[_ ]?STUFF|\bDNP\b|\bDNI\b|\bN\/?I\b|@NC\b/i;
@@ -92,6 +93,7 @@ export function buildBoard(raw: RawBoard, fileName: string): Board {
     rect: { cx: 0, cy: 0, w: 0, h: 0, angle: 0 },
     virtual: p.name === '...' || p.name.startsWith('TP·'),
     dnp: DNP_RE.test(p.mfg ?? ''),
+    info: undefined,
   }));
 
   const pins: Pin[] = [];
@@ -143,11 +145,20 @@ export function buildBoard(raw: RawBoard, fileName: string): Board {
     for (const pid of part.pins) if (!pins[pid].r) pins[pid].r = auto;
   }
 
+  // Component intelligence (category, MPN, package, specs).
+  for (const part of parts) {
+    if (part.virtual) continue;
+    part.info = describePart(part.name, part.mfg, part.pins.length);
+    part.dnp = part.dnp || part.info.dnp;
+  }
+
   // Oriented outlines.
   for (const part of parts) {
     if (!part.pins.length) continue;
     const pts = part.pins.map((pid) => pins[pid]);
-    const maxR = pts.reduce((m, p) => Math.max(m, p.r), 0);
+    // Typical pad size, robust to a single large exposed/thermal pad (QFN EPAD).
+    const radii = pts.map((p) => p.r).sort((x, y) => x - y);
+    const maxR = radii[Math.floor((radii.length - 1) * 0.75)] ?? 0;
     part.rect = minAreaRect(pts, maxR * 1.6 + 4);
     // Two-pin passives: make the body a little slimmer than the pad row for readability.
     if (part.pins.length === 2) part.rect.h = Math.max(part.rect.h * 0.9, maxR * 2.2);
@@ -172,6 +183,7 @@ export function buildBoard(raw: RawBoard, fileName: string): Board {
   return {
     fileName,
     format: raw.format,
+    title: raw.title,
     outline,
     parts,
     pins,
