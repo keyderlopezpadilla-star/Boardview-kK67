@@ -1,7 +1,7 @@
 {
   "name": "boardview-kk67",
   "private": true,
-  "version": "1.0.0",
+  "version": "1.1.0",
   "type": "module",
   "description": "Boardview KK67 Pro — visor profesional de boardviews para reparación de placas",
   "scripts": {
