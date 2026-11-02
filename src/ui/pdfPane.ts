@@ -154,6 +154,9 @@ export class PdfPane {
     const first = await doc.getPage(1);
     const vp = first.getViewport({ scale: 1 });
     this.baseSize = { w: vp.width, h: vp.height };
+    // Open fitted to the pane width (schematics are usually landscape A3/A4).
+    const avail = this.scroller.clientWidth - 48;
+    if (avail > 100) this.zoom = Math.min(6, Math.max(0.4, avail / vp.width));
     this.scroller.replaceChildren();
     for (let i = 0; i < doc.numPages; i++) {
       const marks = h('div.pdf-marks');

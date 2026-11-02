@@ -1,0 +1,27 @@
+{
+  "name": "Boardview KK67 Pro",
+  "short_name": "KK67 Boardview",
+  "description": "Visor profesional de boardviews para reparación de placas de portátiles.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "display_override": ["window-controls-overlay", "standalone"],
+  "orientation": "any",
+  "background_color": "#07090c",
+  "theme_color": "#07090c",
+  "categories": ["utilities", "productivity"],
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "file_handlers": [
+    {
+      "action": "./",
+      "accept": {
+        "application/octet-stream": [".brd", ".bdv", ".asc", ".bvr", ".cad", ".gcd", ".cst", ".fz", ".pcb"],
+        "application/zip": [".zip"]
+      }
+    }
+  ]
+}

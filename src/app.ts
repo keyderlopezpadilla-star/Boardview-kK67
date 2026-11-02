@@ -5,6 +5,7 @@ import { Store, isVisible, loadSettings, saveSettings, type Selection, type Sett
 import type { Board, Bounds, InputFile, Pt, WorkerRequest, WorkerResponse } from './core/types';
 import { generateDemoBRD } from './demo/demoBoard';
 import { SUPPORTED_EXTENSIONS } from './parsers';
+import { isAndroidShell } from './platform';
 import { parseFzKey } from './crypto/rc6';
 import { Camera } from './render/camera';
 import { Minimap } from './render/minimap';
@@ -100,7 +101,8 @@ export class App {
     const tb = (ico: Parameters<typeof icon>[0], title: string, fn: () => void, extra = '') =>
       h(`button.icon-btn${extra}`, { title, 'aria-label': title, onclick: fn }, icon(ico));
 
-    this.fileInput = h('input', { type: 'file', multiple: true, hidden: true, accept: SUPPORTED_EXTENSIONS.join(',') }) as HTMLInputElement;
+    // Android's picker maps `accept` to MIME types and would grey out .brd/.cad/…; accept everything there.
+    this.fileInput = h('input', { type: 'file', multiple: true, hidden: true, accept: isAndroidShell() ? undefined : SUPPORTED_EXTENSIONS.join(',') }) as HTMLInputElement;
     this.fileInput.addEventListener('change', () => {
       if (this.fileInput.files?.length) void this.openFiles([...this.fileInput.files]);
       this.fileInput.value = '';
@@ -257,6 +259,7 @@ export class App {
     if (bh > bw * 1.25 && this.cam.width > this.cam.height) this.cam.rotation = 1;
     this.store.set({ board, selection: null, pinnedNets: [], hover: null, side: 'top' });
     this.cam.fit(board.bounds, 48, true);
+    this.autoFit = true;
     this.welcome.classList.add('hidden');
     this.fileChip.textContent = board.fileName;
     this.fileChip.title = board.fileName;
@@ -386,6 +389,7 @@ export class App {
   }
 
   private focusOn(sel: Exclude<Selection, null>): void {
+    this.autoFit = false;
     const b = this.store.state.board!;
     let box: Bounds;
     if (sel.kind === 'pin') {
@@ -547,6 +551,7 @@ export class App {
     };
 
     c.addEventListener('pointerdown', (e) => {
+      this.autoFit = false;
       c.setPointerCapture(e.pointerId);
       const p = local(e);
       pointers.set(e.pointerId, p);
@@ -619,6 +624,7 @@ export class App {
 
     c.addEventListener('wheel', (e) => {
       e.preventDefault();
+      this.autoFit = false;
       const p = local(e);
       const isTrackpadPan = !e.ctrlKey && e.deltaMode === 0 && Math.abs(e.deltaX) > 0.5 && Math.abs(e.deltaX) >= Math.abs(e.deltaY) * 0.3;
       if (isTrackpadPan) {
@@ -787,6 +793,8 @@ export class App {
     this.cam.width = r.width;
     this.cam.height = r.height;
     this.renderer.resize(r.width, r.height, dpr);
+    const b = this.store.state.board;
+    if (this.autoFit && b) this.cam.fit(b.bounds, 48, true);
     this.invalidate();
   }
 
@@ -811,6 +819,8 @@ export class App {
   }
 
   private settleFrame = false;
+  /** Keep the board framed through layout changes until the user takes control of the view. */
+  private autoFit = false;
   private dragging = false;
 
   private draw(fast = false): void {

@@ -13,6 +13,18 @@ npm run build      # build estático en dist/ — desplegable en cualquier hosti
 npm test           # tests de parsers, criptografía y pipeline
 ```
 
+## Aplicaciones nativas
+
+| Plataforma | Artefacto | Cómo se genera |
+|---|---|---|
+| Windows 10/11 x64 | `Boardview-KK67-Pro-Setup-x.y.z.exe` (instalador, asocia `.brd/.cad/.bdv/.fz/.pcb/…`) y `…-portable.exe` | `npm run dist:win` (en Linux requiere Wine 32+64 bits) |
+| Android / Chromebook | `app-release.apk` (Android 6+, target SDK 35) | `npm run dist:android` (JDK 21 + Android SDK 35) |
+| Chromebook / cualquier navegador | PWA instalable y offline | `npm run build` y servir `dist/` por HTTPS → *Instalar app* |
+
+- **Electron** (`electron/`): sirve `dist/` por un esquema privilegiado `app://` (workers y pdf.js igual que en web), instancia única, abre los archivos recibidos por doble clic o línea de comandos, sin acceso a Node desde la página (`contextIsolation`, `sandbox`).
+- **Capacitor** (`android/`): misma build web empaquetada; el selector de archivos acepta cualquier extensión (Android no conoce `.brd`/`.cad`).
+- **Firma Android**: `android/keystore.properties` + `android/keystore/*.jks` (no versionados). Guarda ese keystore: todas las actualizaciones futuras del APK deben firmarse con él.
+
 ## Formatos soportados
 
 | Formato | Extensión | Notas |

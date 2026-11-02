@@ -46,7 +46,8 @@ ${body}
 const html = `<!doctype html><html><head><style>
 @page { size: 420mm 297mm; margin: 0; }
 body { margin: 0; font-family: Arial, Helvetica, sans-serif; }
-.sheet { width: 420mm; height: 297mm; page-break-after: always; }
+.sheet { width: 420mm; height: 297mm; page-break-after: always; overflow: hidden; }
+.sheet:last-child { page-break-after: auto; }
 svg { width: 100%; height: 100%; }
 .frame { fill: none; stroke: #444; stroke-width: 2; }
 .body { fill: #fffbe6; stroke: #7a1f1f; stroke-width: 2.4; }
