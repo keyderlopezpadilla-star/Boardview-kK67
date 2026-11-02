@@ -92,6 +92,8 @@ export class Sidebar {
       }))
       .sort((a, b) => collator.compare(a.label, b.label));
     this.netRows = board.nets
+      // Auto-generated per-pin "NC@n" nets are noise in the list (still reachable via their pin).
+      .filter((n) => !/^NC@\d+$/.test(n.name))
       .map((n) => ({ kind: 'net' as const, id: n.id, key: `net:${n.id}`, label: n.name, meta: `${n.pins.length + n.nails.length}`, tag: n.kind }))
       .sort((a, b) => collator.compare(a.label, b.label));
     this.refresh();

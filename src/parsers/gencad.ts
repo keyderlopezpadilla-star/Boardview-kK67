@@ -223,9 +223,10 @@ export function parseGenCAD(data: Uint8Array): RawBoard {
       const idx = parts.length + 1;
       for (const sp of shape) {
         const st = stackOf(sp.pad);
-        let pside: Side = st ? (st.top && st.bottom ? 'both' : st.top ? 'top' : st.bottom ? 'bottom' : 'both') : side;
-        if (!st && (sp.layer === 'TOP' || sp.layer === 'BOTTOM')) pside = sp.layer === 'TOP' ? 'top' : 'bottom';
-        if (c.flip) pside = pside === 'top' ? 'bottom' : pside === 'bottom' ? 'top' : pside;
+        // SMD pads always sit on the component's layer (some exporters leave shape pads as TOP
+        // for bottom parts); drilled pads go through both sides.
+        let pside: Side = st?.drilled ? 'both' : side;
+        if (st && !st.drilled && st.top && st.bottom) pside = 'both';
         pins.push({
           part: idx,
           num: sp.name,

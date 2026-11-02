@@ -80,6 +80,8 @@ export interface Part {
   rect: OrientedRect;
   /** Pseudo-parts generated for orphan pads / test points. */
   virtual: boolean;
+  /** Not populated in this assembly variant (NOASSEMBLED / DNP / NI…). */
+  dnp: boolean;
 }
 
 export interface Pin {

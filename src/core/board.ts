@@ -5,25 +5,32 @@ import type { Board, Bounds, Nail, Net, NetKind, Part, Pin, Pt, RawBoard } from 
 /* Net classification heuristics (tuned on Apple, Quanta, Compal, Wistron) */
 /* ------------------------------------------------------------------ */
 
-const GND_RE = /^(?:[ADPS]?GND|VSS[A-Z0-9_]*|GROUND|GND[_A-Z0-9]*|[A-Z0-9_]*_GND)$/i;
+const GND_RE = /^(?:[ADPSCE]?GND|VSS|GROUND)(?:[_\-].*)?$|[_\-](?:[ADPS]?GND|VSS)$/i;
 const NC_RE = /^(?:NC|N\/C|NC[_@].*|UNCONNECTED|NOCONNECT|NET_NC|$)$/i;
 const POWER_RE = new RegExp(
   [
     '^PP[A-Z0-9_]', // Apple: PP3V3_S5, PPBUS_G3H
-    '^\\+?\\d+(?:V|P)\\d*', // +3V3, 5V, 1P8
-    '^\\+',
-    '^P?\\d+V\\d*[_A-Z]', // P1V05_S0, 3V_S5
+    '^P\\d+V\\d*', // ASUS/Compal: P1V2, P3V3A, P5V0S_HDMI
+    '^PV[A-Z]', // ASUS: PVCORE, PVBAT, PVSYS, PVADPTR
+    '^PW_', // ASUS: PW_USB_TYPE_C_A
+    '^\\+', // Quanta/Wistron: +3VALW, +VCC_CORE
+    '^\\d+(?:V|P)\\d*', // 3V3_S5, 1P8
     '^(?:VCC|VDD|VIN|VBAT|VBUS|VREF|VREG|VCORE|VGFX|VSA|VCCIO|VCCSA|VPP|VTT|VDDQ|VR_|PVCC|PVDD|AVDD|DVDD|BATT|DCIN|ADAPTER|AC_IN|VSYS|VMAIN)',
     '_(?:\\d+V\\d*|\\d+P\\d+V?)(?:_|$)',
   ].join('|'),
   'i',
 );
+/** Control/sense nets that merely mention a rail (e.g. 1V8_MAIN_EN, P3V3_PG) are signals. */
+const CONTROL_RE = /(?:^|_)(?:EN|ENABLE|PG|PGOOD|PWRGD|PWROK|POK|ON|OFF|DET|SENSE|SNS|FB|CS[PN]?|PH|PHASE|LX|SW\d*|BOOT|BST|UG|LG|DH|DL|GATE|DRV|CTRL|SEL|ALERT|RST|RESET)\d*#?(?:_|$)/i;
+
+/** Assembly-variant markers used by ODM BOMs for unpopulated footprints. */
+const DNP_RE = /NO[_ ]?ASSEMBL|NOT[_ ]?ASSEMBL|NO[_ ]?POP|NOPOP|NO[_ ]?STUFF|\bDNP\b|\bDNI\b|\bN\/?I\b|@NC\b/i;
 
 export function classifyNet(name: string): NetKind {
   const n = name.trim();
   if (NC_RE.test(n)) return 'nc';
   if (GND_RE.test(n)) return 'ground';
-  if (POWER_RE.test(n)) return 'power';
+  if (POWER_RE.test(n) && !CONTROL_RE.test(n)) return 'power';
   return 'signal';
 }
 
@@ -84,6 +91,7 @@ export function buildBoard(raw: RawBoard, fileName: string): Board {
     pins: [],
     rect: { cx: 0, cy: 0, w: 0, h: 0, angle: 0 },
     virtual: p.name === '...' || p.name.startsWith('TP·'),
+    dnp: DNP_RE.test(p.mfg ?? ''),
   }));
 
   const pins: Pin[] = [];
@@ -115,7 +123,7 @@ export function buildBoard(raw: RawBoard, fileName: string): Board {
   if (orphanPins.length) {
     const vp: Part = {
       id: parts.length, name: '...', side: 'both', smd: true, pins: orphanPins,
-      rect: { cx: 0, cy: 0, w: 0, h: 0, angle: 0 }, virtual: true,
+      rect: { cx: 0, cy: 0, w: 0, h: 0, angle: 0 }, virtual: true, dnp: false,
     };
     for (const pid of orphanPins) pins[pid].part = vp.id;
     parts.push(vp);

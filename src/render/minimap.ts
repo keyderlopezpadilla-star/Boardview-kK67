@@ -84,7 +84,7 @@ export class Minimap {
     ctx.stroke();
     ctx.beginPath();
     for (const part of board.parts) {
-      if (part.virtual || (side !== 'both' && part.side !== 'both' && part.side !== side)) continue;
+      if (part.virtual || part.dnp || (side !== 'both' && part.side !== 'both' && part.side !== side)) continue;
       const q = rectCorners(part.rect);
       ctx.moveTo(q[0].x, q[0].y);
       for (let i = 1; i < 4; i++) ctx.lineTo(q[i].x, q[i].y);

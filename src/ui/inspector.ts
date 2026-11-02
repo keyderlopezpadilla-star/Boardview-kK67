@@ -83,7 +83,7 @@ export class Inspector {
     const stat = (label: string, value: string | number) => h('div.stat', {}, h('span', {}, label), h('b', {}, String(value)));
     return h('div.panel', {},
       h('div.eyebrow', {}, 'Placa'),
-      h('h2.title', { title: b.fileName }, b.fileName),
+      h('h2.title.title-file', { title: b.fileName }, b.fileName),
       h('div.badges', {}, h('span.badge', {}, b.format), h('span.badge', {}, `${this.fmt(w)} × ${this.fmt(hgt)}`)),
       h('div.stats', {},
         stat('Componentes', real.length.toLocaleString()), stat('Pines', b.pins.length.toLocaleString()),
@@ -127,7 +127,7 @@ export class Inspector {
     if (this.actions.pdfAvailable()) actions.push(this.btn('En esquema', 'pdf', () => this.actions.searchPdf(part.name)));
     return [
       h('div.panel', {},
-        ...this.header('Componente', part.name, [SIDE_TEXT[part.side], part.smd ? 'SMD' : 'Through-hole', `${part.pins.length} pines`, `${netsOnPart.size} redes`], actions),
+        ...this.header('Componente', part.name, [SIDE_TEXT[part.side], ...(part.dnp ? [h('span.badge.dnp', {}, 'No montado')] : []), part.smd ? 'SMD' : 'Through-hole', `${part.pins.length} pines`, `${netsOnPart.size} redes`], actions),
         part.mfg ? h('p.mfg', {}, part.mfg) : null,
         h('div.kv', {}, h('span', {}, 'Centro'), h('b', {}, `${this.fmt(part.rect.cx)}, ${this.fmt(part.rect.cy)}`), h('span', {}, 'Cuerpo'), h('b', {}, `${this.fmt(part.rect.w)} × ${this.fmt(part.rect.h)}`)),
         this.noteEditor('part', id),

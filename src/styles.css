@@ -526,6 +526,8 @@ textarea.input { height: auto; padding: 8px 10px; resize: vertical; line-height:
 .badge.kind-power { background: color-mix(in srgb, var(--k-power) 18%, transparent); color: var(--k-power); }
 .badge.kind-signal { background: color-mix(in srgb, var(--k-signal) 18%, transparent); color: var(--k-signal); }
 .badge.kind-ground { background: color-mix(in srgb, var(--k-ground) 25%, transparent); color: color-mix(in srgb, var(--k-ground) 70%, white); }
+.badge.dnp { background: color-mix(in srgb, var(--warn) 18%, transparent); color: var(--warn); }
+.title.title-file { font-size: 14px; line-height: 1.35; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; word-break: break-word; }
 .badge.kind-nc { background: color-mix(in srgb, var(--k-nc) 30%, transparent); }
 .actions { display: flex; flex-wrap: wrap; gap: 6px; }
 .actions .btn { height: 30px; font-size: 12px; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }

@@ -148,6 +148,9 @@ $ENDSIGNALS
     expect(raw.pins[0].net).toBe('VCC');
     expect(raw.pins[0].radius).toBe(10);
     expect(raw.parts[0].mfg).toContain('RES_10K');
+    expect(buildBoard(raw, 'r.cad').parts[0].dnp).toBe(false);
+    const dnp = parseGenCAD(enc(t.replace('$ENDCOMPONENTS', '$ENDCOMPONENTS\n$DEVICES\nDEVICE RES_10K\nDESC NOASSEMBLED\n$ENDDEVICES')));
+    expect(buildBoard(dnp, 'r.cad').parts[0].dnp).toBe(true);
     expect(raw.outline.length).toBeGreaterThan(0);
   });
 });
@@ -195,6 +198,9 @@ describe('net classification', () => {
   it.each([
     ['GND', 'ground'], ['PGND', 'ground'], ['VSS', 'ground'],
     ['PP3V3_S5', 'power'], ['+3VALW', 'power'], ['VCC_CORE', 'power'], ['P1V05_S0', 'power'], ['1V8_AON', 'power'],
+    ['P1V2', 'power'], ['PVCORE', 'power'], ['PVBAT', 'power'], ['P3V3A', 'power'], ['PW_USB_TYPE_C_A', 'power'],
+    ['DGND_NFC', 'ground'], ['AGND_AUDIO', 'ground'],
+    ['1V8_MAIN_EN_PWR', 'signal'], ['P3V3_PG', 'signal'], ['VRPGPU_SW1', 'signal'], ['PP5V_EN', 'signal'],
     ['NC', 'nc'], ['UNCONNECTED', 'nc'],
     ['USB2_D0_P', 'signal'], ['PLT_RST_L', 'signal'], ['SPI_CLK', 'signal'],
   ])('%s → %s', (n, k) => expect(classifyNet(n)).toBe(k));

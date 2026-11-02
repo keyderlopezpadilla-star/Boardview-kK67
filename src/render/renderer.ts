@@ -55,6 +55,9 @@ interface Layers {
   pinsLod: Record<NetKind, Path2D>;
   partStroke: Path2D;
   pin1: Path2D;
+  /** Unpopulated footprints: dashed body + faint pads. */
+  dnpStroke: Path2D;
+  dnpPins: Path2D;
   count: number;
 }
 
@@ -110,7 +113,7 @@ export class BoardRenderer {
       return;
     }
     const kinds = () => ({ ground: new Path2D(), nc: new Path2D(), signal: new Path2D(), power: new Path2D() });
-    const mk = (): Layers => ({ pins: kinds(), pinsLod: kinds(), partStroke: new Path2D(), pin1: new Path2D(), count: 0 });
+    const mk = (): Layers => ({ pins: kinds(), pinsLod: kinds(), partStroke: new Path2D(), pin1: new Path2D(), dnpStroke: new Path2D(), dnpPins: new Path2D(), count: 0 });
 
     // ~1.5k pads per tile keeps per-tile cost tiny while bounding draw-call count.
     const bb = board.bounds;
@@ -139,6 +142,13 @@ export class BoardRenderer {
       const L = t.groups[groupOf(pin.side)];
       const kind = board.nets[pin.net].kind;
       const r = pin.r;
+      if (board.parts[pin.part]?.dnp) {
+        L.dnpPins.moveTo(pin.x + r, pin.y);
+        L.dnpPins.arc(pin.x, pin.y, r, 0, Math.PI * 2);
+        L.count++;
+        grow(t, pin.x - r, pin.y - r, pin.x + r, pin.y + r);
+        continue;
+      }
       L.pins[kind].moveTo(pin.x + r, pin.y);
       L.pins[kind].arc(pin.x, pin.y, r, 0, Math.PI * 2);
       L.pinsLod[kind].rect(pin.x - r, pin.y - r, r * 2, r * 2);
@@ -150,9 +160,10 @@ export class BoardRenderer {
       const t = tileAt(part.rect.cx, part.rect.cy);
       const L = t.groups[groupOf(part.side)];
       const c = rectCorners(part.rect);
-      L.partStroke.moveTo(c[0].x, c[0].y);
-      for (let i = 1; i < 4; i++) L.partStroke.lineTo(c[i].x, c[i].y);
-      L.partStroke.closePath();
+      const body = part.dnp ? L.dnpStroke : L.partStroke;
+      body.moveTo(c[0].x, c[0].y);
+      for (let i = 1; i < 4; i++) body.lineTo(c[i].x, c[i].y);
+      body.closePath();
       L.count++;
       for (const q of c) grow(t, q.x, q.y, q.x, q.y);
       if (part.pins.length > 2) {
@@ -289,6 +300,17 @@ export class BoardRenderer {
         ctx.fill(L.partStroke);
         ctx.stroke(L.partStroke);
       }
+      // Unpopulated footprints read as "ghosts": dashed outline, faint pads.
+      ctx.globalAlpha = alpha * dim * 0.55;
+      ctx.setLineDash([4 * px, 3 * px]);
+      for (const t of visibleTiles) if (t.groups[g].count) ctx.stroke(t.groups[g].dnpStroke);
+      ctx.setLineDash([]);
+      if (pinsVisible) {
+        ctx.globalAlpha = alpha * dim * 0.28;
+        ctx.fillStyle = P.partStroke;
+        for (const t of visibleTiles) if (t.groups[g].count) ctx.fill(t.groups[g].dnpPins);
+      }
+      ctx.globalAlpha = alpha * dim;
       if (!pinsVisible) continue;
       for (const k of KINDS) {
         ctx.globalAlpha = alpha * dim * (k === 'ground' && settings.dimGround ? 0.7 : 1);
@@ -513,10 +535,12 @@ export class BoardRenderer {
       if (budget <= 0) return;
       const part = board.parts[id];
       if (!isVisible(part.side, view)) return;
-      const minDim = Math.min(part.rect.w, part.rect.h) * cam.scale;
-      const maxDim = Math.max(part.rect.w, part.rect.h) * cam.scale;
-      if (minDim < 9 || maxDim < part.name.length * 5) return;
-      const size = Math.min(Math.max(minDim * 0.32, 9), 26);
+      // Fit the designator inside the body's on-screen box (labels are always horizontal).
+      const corners = rectCorners(part.rect).map((q) => cam.toScreen(q.x, q.y));
+      const boxW = Math.max(...corners.map((q) => q.x)) - Math.min(...corners.map((q) => q.x));
+      const boxH = Math.max(...corners.map((q) => q.y)) - Math.min(...corners.map((q) => q.y));
+      const size = Math.min(26, boxH * 0.42, (boxW * 0.9) / (part.name.length * 0.62));
+      if (size < 7.5) return;
       const s = cam.toScreen(part.rect.cx, part.rect.cy);
       ctx.font = `600 ${size}px ${font}`;
       // Once pad numbers are readable the designator steps back so it doesn't fight them.
