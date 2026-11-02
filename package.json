@@ -1,0 +1,23 @@
+{
+  "name": "boardview-kk67",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Boardview KK67 — visor profesional de boardviews para reparación de placas de portátiles",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "fflate": "^0.8.3",
+    "pdfjs-dist": "^4.10.38"
+  },
+  "devDependencies": {
+    "typescript": "^7.0.2",
+    "vite": "^8.3.5",
+    "vitest": "^5.0.5"
+  }
+}
