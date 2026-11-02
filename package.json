@@ -1,0 +1,102 @@
+{
+  "name": "boardview-kk67",
+  "private": true,
+  "version": "1.1.0",
+  "type": "module",
+  "description": "Boardview KK67 Pro — visor profesional de boardviews para reparación de placas",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "electron:dev": "npm run build && electron . --no-sandbox",
+    "dist:win": "npm run build && electron-builder --win --x64",
+    "android:sync": "npm run build && cap sync android",
+    "dist:android": "npm run android:sync && cd android && ./gradlew assembleRelease"
+  },
+  "dependencies": {
+    "@capacitor/android": "^7.6.10",
+    "@capacitor/core": "^7.6.10",
+    "@fontsource/inter": "^5.3.0",
+    "@fontsource/jetbrains-mono": "^5.3.0",
+    "fflate": "^0.8.3",
+    "pdfjs-dist": "^4.10.38"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^7.6.10",
+    "electron": "^33.4.11",
+    "electron-builder": "^25.1.8",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.5",
+    "vitest": "^5.0.5"
+  },
+  "main": "electron/main.cjs",
+  "author": {
+    "name": "Keyder Lopez Padilla",
+    "email": "keyderlopezpadilla@gmail.com"
+  },
+  "homepage": "https://github.com/keyderlopezpadilla-star/Boardview-kK67",
+  "build": {
+    "appId": "com.kk67.boardview",
+    "productName": "Boardview KK67 Pro",
+    "copyright": "© 2026 Keyder Lopez Padilla",
+    "directories": {
+      "output": "release",
+      "buildResources": "build"
+    },
+    "files": [
+      "dist/**/*",
+      "electron/**/*",
+      "package.json"
+    ],
+    "asar": true,
+    "fileAssociations": [
+      {
+        "ext": [
+          "brd",
+          "bdv",
+          "bvr",
+          "cad",
+          "gcd",
+          "cst",
+          "fz",
+          "pcb"
+        ],
+        "name": "Boardview",
+        "description": "Archivo de boardview",
+        "role": "Viewer"
+      }
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "build/icon.png",
+      "signAndEditExecutable": true
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "perMachine": false,
+      "createDesktopShortcut": true,
+      "shortcutName": "Boardview KK67 Pro",
+      "uninstallDisplayName": "Boardview KK67 Pro",
+      "artifactName": "Boardview-KK67-Pro-Setup-${version}.${ext}"
+    },
+    "portable": {
+      "artifactName": "Boardview-KK67-Pro-${version}-portable.exe"
+    }
+  }
+}

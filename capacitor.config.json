@@ -1,0 +1,10 @@
+{
+  "appId": "com.kk67.boardview",
+  "appName": "Boardview KK67 Pro",
+  "webDir": "dist",
+  "android": {
+    "backgroundColor": "#07090c",
+    "allowMixedContent": false,
+    "webContentsDebuggingEnabled": false
+  }
+}

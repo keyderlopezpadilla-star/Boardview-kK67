@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Boardview KK67 Pro</string>
+    <string name="title_activity_main">Boardview KK67 Pro</string>
+    <string name="package_name">com.kk67.boardview</string>
+    <string name="custom_url_scheme">com.kk67.boardview</string>
+</resources>
